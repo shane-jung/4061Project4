@@ -15,6 +15,11 @@
 #include <unistd.h>
 #include "util.h"
 
+
+#define BACKLOG 20
+#define GET_REQ_SIZE 2048
+
+int sockfd;
 /**********************************************
  * init
    - port is the number of the port you want the server to be
@@ -26,6 +31,28 @@
    - if init encounters any errors, it will call exit().
 ************************************************/
 void init(int port) {
+  if( (sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1 ) {
+    perror("Failed to make socket");
+    exit(0);
+  }
+
+  int enable = 1;
+  setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char*) &enable, sizeof(int));
+
+  struct sockaddr_in addr; 
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  addr.sin_port = htons(port);
+  if(bind(sockfd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
+    perror("Failed to bind socket");
+    exit(0);
+  }
+
+  if(listen(sockfd, BACKLOG) == -1){
+    perror("Failed to listen");
+    exit(0);
+  }
+
 }
 
 /**********************************************
@@ -36,6 +63,11 @@ void init(int port) {
    - if the return value is negative, the request should be ignored.
 ***********************************************/
 int accept_connection(void) {
+  int fd; 
+  if((fd = accept(sockfd, NULL, NULL)) < 0){
+    perror("Failed to accept connection");
+  } 
+  return fd;
 }
 
 /**********************************************
@@ -54,6 +86,25 @@ int accept_connection(void) {
      specific 'connection'.
 ************************************************/
 int get_request(int fd, char *filename) {
+  char buf[GET_REQ_SIZE];
+  if(read(fd, buf, GET_REQ_SIZE) == -1){
+    perror("Failed to read");
+    return 1;
+  }
+
+  char request_type[100]; 
+  sscanf(buf, "%s %s", request_type, filename);
+  printf("Request Type: %s filename: %s\n", request_type, filename);
+
+  if(strcmp("GET", request_type)){
+    fprintf(stderr, "Not a GET request\n");
+    return 1;
+  }
+  if(!strcmp("", filename) || (strstr(filename, "..") != NULL) || (strstr(filename, "//") != NULL)){
+    fprintf(stderr, "Invalid filename\n");
+    return 1;
+  } 
+  return 0;
 }
 
 /**********************************************
@@ -76,6 +127,38 @@ int get_request(int fd, char *filename) {
    - returns 0 on success, nonzero on failure.
 ************************************************/
 int return_result(int fd, char *content_type, char *buf, int numbytes) {
+  char* header_line = "HTTP/1.1 200 OK\n";
+  if(write(fd, header_line, strlen(header_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  char content_line [128];
+  sprintf(content_line, "Content-Type: %s\n", content_type);
+  if(write(fd, content_line, strlen(content_line) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  char length_line [128];
+  sprintf(length_line, "Content-Length: %d\n", numbytes);
+  if(write(fd, length_line, strlen(length_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  char* connection_line = "Connection: Close\n\n";
+  if(write(fd, connection_line, strlen(connection_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  if(write(fd, buf, numbytes) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  return 0;
 }
 
 /**********************************************
@@ -88,4 +171,5 @@ int return_result(int fd, char *content_type, char *buf, int numbytes) {
    - returns 0 on success, nonzero on failure.
 ************************************************/
 int return_error(int fd, char *buf) {
+  
 }
