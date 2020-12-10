@@ -135,7 +135,7 @@ int return_result(int fd, char *content_type, char *buf, int numbytes) {
 
   char content_line [128];
   sprintf(content_line, "Content-Type: %s\n", content_type);
-  if(write(fd, content_line, strlen(content_line) == -1){
+  if(write(fd, content_line, strlen(content_line)) == -1){
     perror("Write failed");
     return 1;
   }
