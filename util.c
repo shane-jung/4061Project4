@@ -18,6 +18,7 @@
 
 #define BACKLOG 20
 #define GET_REQ_SIZE 2048
+#define LINE_LENGTH 128
 
 int sockfd;
 /**********************************************
@@ -133,14 +134,14 @@ int return_result(int fd, char *content_type, char *buf, int numbytes) {
     return 1;
   }
 
-  char content_line [128];
+  char content_line [LINE_LENGTH];
   sprintf(content_line, "Content-Type: %s\n", content_type);
   if(write(fd, content_line, strlen(content_line)) == -1){
     perror("Write failed");
     return 1;
   }
 
-  char length_line [128];
+  char length_line [LINE_LENGTH];
   sprintf(length_line, "Content-Length: %d\n", numbytes);
   if(write(fd, length_line, strlen(length_line)) == -1){
     perror("Write failed");
