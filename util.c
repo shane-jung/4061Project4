@@ -158,7 +158,7 @@ int return_result(int fd, char *content_type, char *buf, int numbytes) {
     perror("Write failed");
     return 1;
   }
-
+  close(fd);
   return 0;
 }
 
@@ -172,5 +172,35 @@ int return_result(int fd, char *content_type, char *buf, int numbytes) {
    - returns 0 on success, nonzero on failure.
 ************************************************/
 int return_error(int fd, char *buf) {
-  
+  char* header_line = "HTTP/1.1 404 Not Found\n";
+  if(write(fd, header_line, strlen(header_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  char content_line [LINE_LENGTH] = "Content-Type: text/html\n";
+  if(write(fd, content_line, strlen(content_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  char length_line [LINE_LENGTH];
+  sprintf(length_line, "Content-Length: %ld\n", strlen(buf));
+  if(write(fd, length_line, strlen(length_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  char* connection_line = "Connection: Close\n\n";
+  if(write(fd, connection_line, strlen(connection_line)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+
+  if(write(fd, buf, strlen(buf)) == -1){
+    perror("Write failed");
+    return 1;
+  }
+  close(fd);
+  return 0;
 }
